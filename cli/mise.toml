@@ -1,5 +1,6 @@
 [tools]
 dart = "3.11.2"
+jj = "latest"
 
 [hooks]
 postinstall = [

@@ -18,6 +18,8 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           working_directory: cli
+      - run: jj git init --colocate
+        working-directory: .
       - run: mise run generate
       - run: mise run check
       - run: mise run test
