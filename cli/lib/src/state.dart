@@ -10,9 +10,8 @@ import 'package:path/path.dart' as p;
 Future<String> _jjDir() async {
   final jjDir = p.join(await workspaceRoot(), '.jj');
   final repoEntry = File(p.join(jjDir, 'repo'));
-  if (await repoEntry.exists() && await FileSystemEntity.type(repoEntry.path) == FileSystemEntityType.file) {
-    // Secondary workspace — follow the pointer to the primary's .jj dir.
-    final repoPath = (await repoEntry.readAsString()).trim();
+  if (repoEntry.existsSync() && FileSystemEntity.typeSync(repoEntry.path) == FileSystemEntityType.file) {
+    final repoPath = repoEntry.readAsStringSync().trim();
     return p.dirname(repoPath);
   }
   return jjDir;
@@ -26,24 +25,33 @@ Future<File> _jjStateFile() async => File(p.join(await _jjDir(), 'djo-state'));
 /// The djo logs directory, shared across all workspaces.
 Future<String> logsDir() async => p.join(await _jjDir(), 'djo', 'logs');
 
-/// Load the previous workspace name.
+/// Load the previous workspace name, or `null` if none is recorded.
 Future<String?> loadPreviousWorkspace() async {
-  try {
-    final file = await _jjStateFile();
-    if (file.existsSync()) {
-      return file.readAsStringSync().trim().nonEmptyOrNull;
-    }
-  } on Exception {
-    // Best-effort.
-  }
-  return null;
+  final file = await _jjStateFile();
+  if (!file.existsSync()) return null;
+  return file.readAsStringSync().trim().nonEmptyOrNull;
 }
 
 /// Save the current workspace name as the previous workspace.
 Future<void> savePreviousWorkspace(String name) async {
-  try {
-    (await _jjStateFile()).writeAsStringSync('$name\n');
-  } on Exception {
-    // Best-effort.
+  (await _jjStateFile()).writeAsStringSync('$name\n');
+}
+
+/// Clear the previous-workspace pointer (e.g. when the workspace it pointed to
+/// has been removed, so it can never reference a deleted or current workspace).
+Future<void> clearPreviousWorkspace() async {
+  final file = await _jjStateFile();
+  if (file.existsSync()) file.deleteSync();
+}
+
+/// Clear the previous-workspace pointer if it references any of [removedNames],
+/// so `switch -` never points at a workspace that no longer exists.
+///
+/// Call this *before* deleting the workspace directory: the state file is
+/// resolved relative to the current workspace, which must still exist.
+Future<void> clearPreviousWorkspaceIfRemoved(Iterable<String> removedNames) async {
+  final previous = await loadPreviousWorkspace();
+  if (previous != null && removedNames.contains(previous)) {
+    await clearPreviousWorkspace();
   }
 }

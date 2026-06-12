@@ -128,7 +128,7 @@ class SwitchCommand extends Command<void> {
     if (create) {
       await _runHook('pre-start', name, '.');
       path = await _createWorkspace(name, revision: base, createBookmark: bookmark);
-      await currentName?.let(savePreviousWorkspace);
+      if (currentName != null && currentName != name) await savePreviousWorkspace(currentName);
       outputCdPath(path);
       await _runHook('post-start', name, path);
     } else {
@@ -142,7 +142,7 @@ class SwitchCommand extends Command<void> {
         }
         await _runHook('pre-start', name, '.');
         path = await _createWorkspace(name, revision: base, createBookmark: bookmark);
-        await currentName?.let(savePreviousWorkspace);
+        if (currentName != null && currentName != name) await savePreviousWorkspace(currentName);
         outputCdPath(path);
         await _runHook('post-start', name, path);
         await _runHook('post-switch', name, path);
@@ -152,7 +152,7 @@ class SwitchCommand extends Command<void> {
         }
         return;
       }
-      await currentName?.let(savePreviousWorkspace);
+      if (currentName != null && currentName != name) await savePreviousWorkspace(currentName);
       outputCdPath(path);
       await _runHook('post-switch', name, path);
     }

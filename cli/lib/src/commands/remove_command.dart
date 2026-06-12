@@ -7,6 +7,7 @@ import 'package:dojjo/src/jj.dart';
 import 'package:dojjo/src/prompt.dart';
 import 'package:dojjo/src/state.dart';
 import 'package:dojjo/src/util/extensions.dart';
+import 'package:path/path.dart' as p;
 
 class RemoveCommand extends Command<void> {
   RemoveCommand(this._config) {
@@ -51,12 +52,11 @@ class RemoveCommand extends Command<void> {
       await runHooks('pre-remove', hooks: _config.hooks, name: name, path: root);
     }
 
-    // Resolve paths that we'll need after deletion, while the cwd still exists.
+    // Resolve paths/data we'll need after deletion, while the cwd still exists.
     final changeId = workspace?.changeId;
     final otherBookmarks = workspace?.bookmarks.where((bookmark) => bookmark != name).toList() ?? [];
-    final primaryRoot = await primaryWorkspaceRoot();
-    final previous = removingCurrent ? await loadPreviousWorkspace() : null;
-    final previousRoot = removingCurrent ? (await previous?.let(workspaceRoot) ?? primaryRoot) : null;
+    final defaultRoot = await primaryWorkspaceRoot();
+    await clearPreviousWorkspaceIfRemoved([name]);
 
     await workspaceForget(name);
     if (!keepBookmark) {
@@ -72,11 +72,17 @@ class RemoveCommand extends Command<void> {
     stderr.writeln("Removed workspace '$name'");
 
     if (!skipHooks) {
-      await runHooks('post-remove', hooks: _config.hooks, name: name, path: primaryRoot);
+      await runHooks('post-remove', hooks: _config.hooks, name: name, path: defaultRoot);
     }
 
-    if (previousRoot != null) {
-      outputCdPath(previousRoot);
+    if (shouldReturnToDefault(removingCurrent: removingCurrent, removedRoot: root, defaultRoot: defaultRoot)) {
+      outputCdPath(defaultRoot);
     }
   }
 }
+
+/// Whether removing a workspace should send the shell to the default workspace:
+/// only when removing the workspace the user is currently in, and that isn't
+/// the default workspace itself (which would cd into the just-deleted directory).
+bool shouldReturnToDefault({required bool removingCurrent, required String removedRoot, required String defaultRoot}) =>
+    removingCurrent && p.canonicalize(removedRoot) != p.canonicalize(defaultRoot);

@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `-f` short alias for `--full` on `djo list`
 - `shell install` completion now completes the install path.
 
+### Fixed
+
+- For consistency, removing the current workspace now returns you to the default workspace
+- The previous-workspace pointer (used by `switch -`) no longer dangles: `switch` no longer records a no-op self-switch, and `remove`, `prune`, and `merge` clear it whenever a workspace it referenced is removed
+
 ## [0.2.1+1] - 2026-04-14
 
 ## [0.2.1] - 2026-04-14
