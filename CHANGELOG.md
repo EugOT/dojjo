@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `-f` short alias for `--full` on `djo list`
+- `shell install` completion now completes the install path.
 
 ## [0.2.1+1] - 2026-04-14
 
