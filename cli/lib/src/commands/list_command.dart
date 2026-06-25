@@ -9,7 +9,7 @@ class ListCommand extends Command<void> {
   ListCommand() {
     argParser
       ..addFlag('json', defaultsTo: false)
-      ..addFlag('full', defaultsTo: false, help: 'Show additional details (path, age, diff stats)');
+      ..addFlag('full', abbr: 'f', defaultsTo: false, help: 'Show additional details (path, age, diff stats)');
   }
 
   @override

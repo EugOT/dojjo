@@ -2,6 +2,15 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 
+/// The shell completion script for [shell], or `null` if unsupported.
+String? completionScript(String shell) => switch (shell) {
+  'bash' => _bash,
+  'zsh' => _zsh,
+  'fish' => _fish,
+  'pwsh' || 'powershell' => _pwsh,
+  _ => null,
+};
+
 class CompletionCommand extends Command<void> {
   @override
   String get name => 'completion';
@@ -16,13 +25,7 @@ class CompletionCommand extends Command<void> {
       usageException('Missing required argument: <shell>');
     }
     final shell = rest.first;
-    final script = switch (shell) {
-      'bash' => _bash,
-      'zsh' => _zsh,
-      'fish' => _fish,
-      'pwsh' || 'powershell' => _pwsh,
-      _ => null,
-    };
+    final script = completionScript(shell);
     if (script == null) {
       usageException('Unsupported shell: $shell. Use bash, zsh, fish, or pwsh.');
     }
@@ -49,6 +52,12 @@ const _bash = r'''_djo_complete() {
       return 0
       ;;
     shell)
+      # `shell install <shell> [path]`: complete the rc-file path with files.
+      if [ "${COMP_WORDS[2]}" = "install" ] && [ "$COMP_CWORD" -ge 4 ]; then
+        compopt -o filenames 2>/dev/null
+        COMPREPLY=( $(compgen -f -- "$cur") )
+        return 0
+      fi
       COMPREPLY=( $(compgen -W "completion init install" -- "$cur") )
       return 0
       ;;
@@ -103,7 +112,12 @@ const _zsh = r'''_djo() {
           _describe 'bookmark' bookmarks
           ;;
         shell)
-          _describe 'subcommand' '(completion init install)'
+          # `shell install <shell> [path]`: complete the rc-file path with files.
+          if [[ $words[2] == install && ${#words} -ge 4 ]]; then
+            _files
+          else
+            _describe 'subcommand' '(completion init install)'
+          fi
           ;;
       esac
       ;;
@@ -141,10 +155,23 @@ end
 complete -c djo -n '__fish_seen_subcommand_from merge' -a "(jj bookmark list --no-pager -T 'name ++ \"\n\"' 2>/dev/null)"
 
 # Shell subcommands
-complete -c djo -n '__fish_seen_subcommand_from shell' -a 'completion init install' ''';
+complete -c djo -n '__fish_seen_subcommand_from shell' -a 'completion init install'
+
+# `shell install <shell> [path]`: force file completion for the rc-file path.
+complete -c djo -n '__fish_seen_subcommand_from shell; and __fish_seen_subcommand_from install' -F''';
 
 const _pwsh = r'''Register-ArgumentCompleter -CommandName djo -ScriptBlock {
   param($wordToComplete, $commandAst, $cursorPosition)
+  $words = $commandAst.CommandElements | ForEach-Object { $_.ToString() }
+
+  # `djo shell install <shell> [path]`: complete the rc-file path with files.
+  if ($words.Count -ge 3 -and $words[1] -eq 'shell' -and $words[2] -eq 'install') {
+    Get-ChildItem -Path "$wordToComplete*" -ErrorAction SilentlyContinue | ForEach-Object {
+      [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ProviderItem', $_.Name)
+    }
+    return
+  }
+
   $commands = @(
     @{Name='config'; Tooltip='Configuration management'}
     @{Name='copy-ignored'; Tooltip='Copy untracked files between workspaces'}

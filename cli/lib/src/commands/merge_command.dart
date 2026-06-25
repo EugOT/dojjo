@@ -6,6 +6,7 @@ import 'package:dojjo/src/config.dart';
 import 'package:dojjo/src/hooks.dart';
 import 'package:dojjo/src/jj.dart';
 import 'package:dojjo/src/prompt.dart';
+import 'package:dojjo/src/state.dart';
 
 class MergeCommand extends Command<void> {
   MergeCommand(this._config) {
@@ -60,6 +61,7 @@ class MergeCommand extends Command<void> {
       await _step('rebase', () => rebase(target));
     }
     await _step('bookmark set', () => bookmarkSet(target, '@-'));
+    await clearPreviousWorkspaceIfRemoved([name]);
     await _step('workspace forget', () => workspaceForget('@'));
     if (_config.merge.remove) {
       await deleteDirectory(root);
